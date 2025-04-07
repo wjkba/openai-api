@@ -5,10 +5,15 @@ import axios from "axios";
 import Message from "./Message";
 import LoadingDot from "./LoadingDot";
 
+type Message = {
+  content: string;
+  role: "user" | "assistant";
+};
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
 export default function Chat() {
-  const [messages, setMessages] = useState<
-    Array<{ content: string; role: "user" | "assistant" }>
-  >([
+  const [messages, setMessages] = useState<Message[]>([
     {
       content: "Greetings, human. 🤖🔧 How may I assist you today?",
       role: "assistant",
@@ -34,16 +39,16 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post("/api/chat", {
+      const response = await axios.post(`${API_URL}/chat`, {
         message: messageText,
         previousResponseId,
       });
-
-      console.log(response.data);
+      console.log(response);
+      const responseText = response.data.output[0].content[0].text;
 
       setMessages((prev) => [
         ...prev,
-        { content: response.data.output_text, role: "assistant" },
+        { content: responseText, role: "assistant" },
       ]);
       setPreviousResponseId(response.data.id);
     } catch (error) {
