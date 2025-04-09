@@ -39,18 +39,57 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
-      const response = await axios.post(`${API_URL}/chat`, {
-        message: messageText,
-        previousResponseId,
-      });
-      console.log(response);
-      const responseText = response.data.output[0].content[0].text;
+      setMessages((prev) => [...prev, { content: "", role: "assistant" }]);
 
-      setMessages((prev) => [
-        ...prev,
-        { content: responseText, role: "assistant" },
-      ]);
-      setPreviousResponseId(response.data.id);
+      const response = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: messageText,
+          previousResponseId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Error");
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("Response body is null");
+
+      const decoder = new TextDecoder();
+      let fullResponse = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value);
+
+        console.log(chunk);
+
+        const lines = chunk.split(`\n`);
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.substring(6);
+
+            if (data === "[DONE]") continue;
+
+            fullResponse += data;
+
+            setMessages((prev) => {
+              const newMessages = [...prev];
+              newMessages[newMessages.length - 1] = {
+                content: fullResponse,
+                role: "assistant",
+              };
+              return newMessages;
+            });
+          }
+        }
+      }
+
+      //TODO: fix response id
     } catch (error) {
       setMessages((prev) => [
         ...prev,
