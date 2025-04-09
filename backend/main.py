@@ -5,6 +5,7 @@ from fastapi.responses import StreamingResponse
 from openai import OpenAI
 from dotenv import load_dotenv
 import os
+import json
 
 load_dotenv()
 
@@ -32,20 +33,40 @@ async def chat(req: Request):
             return {"error": "Message is required"}
             
         previousResponseId = body.get("previousResponseId")
+        response_id = None
+
 
         def event_stream():
             stream = client.responses.create(
                 model="gpt-4o",
                 input=userMessage,
-                instructions="Respond with robotic language. Add one robotic emoji to each response.",
+                instructions="Respond with robotic language.",
                 previous_response_id=previousResponseId,
                 stream=True
             )
             for event in stream:
+                # if(hasattr(event, "response_id")):
+                #     print(event.response_id)
+
                 if event.type == "response.output_text.delta":
-                    print(event.delta)
-                    yield f"data: {event.delta}\n\n"
-            yield "data: [DONE]\n\n"
+                    message = {
+                        "type": "message",
+                        "delta": event.delta
+                    }
+                    yield f"data: {json.dumps(message)}\n\n"
+
+                if event.type == "response.completed":
+                    response_id = event.response.id
+                    final_message = {
+                        "type": "final", 
+                        "responseId": response_id or "unknown"
+                    }
+                     
+                    yield f"data: {json.dumps(final_message)}\n\n"
+            
+           
+
+        
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
             

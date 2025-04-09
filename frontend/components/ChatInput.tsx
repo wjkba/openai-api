@@ -2,15 +2,20 @@
 import { useState, useRef, useEffect, KeyboardEvent } from "react";
 
 interface ChatInputProps {
+  isLoading: boolean;
   onSendMessage: (message: string) => void;
 }
 
-export default function ChatInput({ onSendMessage }: ChatInputProps) {
+export default function ChatInput({
+  onSendMessage,
+  isLoading,
+}: ChatInputProps) {
   const [message, setMessage] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     if (message.trim()) {
       onSendMessage(message);
       setMessage("");
@@ -35,6 +40,7 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
   return (
     <form onSubmit={handleSubmit} className="flex rounded-lg gap-2">
       <textarea
+        autoFocus
         ref={textareaRef}
         value={message}
         onChange={(e) => setMessage(e.target.value)}
@@ -46,7 +52,7 @@ export default function ChatInput({ onSendMessage }: ChatInputProps) {
       <button
         type="submit"
         className="bg-white px-4 py-2 rounded-lg self-end"
-        disabled={!message.trim()}
+        disabled={!message.trim() || isLoading}
       >
         Send
       </button>

@@ -16,7 +16,9 @@ export default function Message({ content, role = "assistant" }: MessageProps) {
         }
       `}
     >
-      <Markdown>{content}</Markdown>
+      <div className="markdown-content prose">
+        <Markdown>{content}</Markdown>
+      </div>
     </div>
   );
 }

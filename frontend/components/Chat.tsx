@@ -63,6 +63,7 @@ export default function Chat() {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+
         const chunk = decoder.decode(value);
 
         console.log(chunk);
@@ -73,23 +74,28 @@ export default function Chat() {
           if (line.startsWith("data: ")) {
             const data = line.substring(6);
 
-            if (data === "[DONE]") continue;
+            const jsonData = JSON.parse(data);
 
-            fullResponse += data;
+            if (jsonData.type === "final" && jsonData.responseId) {
+              setPreviousResponseId(jsonData.responseId);
+              continue;
+            }
 
-            setMessages((prev) => {
-              const newMessages = [...prev];
-              newMessages[newMessages.length - 1] = {
-                content: fullResponse,
-                role: "assistant",
-              };
-              return newMessages;
-            });
+            if (jsonData.type === "message" && jsonData.delta) {
+              fullResponse += jsonData.delta;
+
+              setMessages((prev) => {
+                const newMessages = [...prev];
+                newMessages[newMessages.length - 1] = {
+                  content: fullResponse,
+                  role: "assistant",
+                };
+                return newMessages;
+              });
+            }
           }
         }
       }
-
-      //TODO: fix response id
     } catch (error) {
       setMessages((prev) => [
         ...prev,
@@ -114,7 +120,7 @@ export default function Chat() {
       </div>
 
       <div className="mt-2">
-        <ChatInput onSendMessage={handleSendMessage} />
+        <ChatInput isLoading={isLoading} onSendMessage={handleSendMessage} />
       </div>
     </div>
   );
