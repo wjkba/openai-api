@@ -45,13 +45,13 @@ export default function ChatInput({
         value={message}
         onChange={(e) => setMessage(e.target.value)}
         onKeyDown={handleKeyDown}
-        className="flex-1 p-2 rounded-lg px-4 bg-neutral-200 focus:outline-none resize-none min-h-[40px] max-h-[150px]"
+        className="flex-1 px-4 py-2 rounded-lg  bg-neutral-200 focus:outline-none resize-none min-h-[32px]  max-h-[160px]"
         placeholder="Type a message..."
         rows={1}
       />
       <button
         type="submit"
-        className="bg-white px-4 py-2 rounded-lg self-end"
+        className="bg-white px-4 py-2 rounded-lg self-end cursor-pointer"
         disabled={!message.trim() || isLoading}
       >
         Send
