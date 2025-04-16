@@ -1,25 +1,36 @@
 import { useState } from "react";
-
-type Message = {
-  content: string;
-  role: "user" | "assistant";
-};
+import { db } from "@/db/db";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 export function useChat() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [previousResponseId, setPreviousResponseId] = useState<null | string>(
-    null
-  );
   const [isLoading, setIsLoading] = useState(false);
+  const [streamingContent, setStreamingContent] = useState<string>("");
 
-  const sendMessage = async (messageText: string) => {
-    setMessages((prev) => [...prev, { content: messageText, role: "user" }]);
+  const sendMessage = async (
+    messageText: string,
+    chatId: number,
+    previousResponseId: string | null
+  ) => {
     setIsLoading(true);
+    setStreamingContent("");
 
     try {
-      setMessages((prev) => [...prev, { content: "", role: "assistant" }]);
+      // Add user message to database
+      await db.messages.add({
+        chatId,
+        role: "user",
+        content: messageText,
+        createdAt: new Date(),
+      });
+
+      // Create a placeholder for the assistant's response that will be updated
+      const assistantMessageId = await db.messages.add({
+        chatId,
+        role: "assistant",
+        content: "",
+        createdAt: new Date(),
+      });
 
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
@@ -30,15 +41,14 @@ export function useChat() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Error");
-      }
+      if (!response.ok) throw new Error("Error");
 
       const reader = response.body?.getReader();
       if (!reader) throw new Error("Response body is null");
 
       const decoder = new TextDecoder();
       let fullResponse = "";
+      let responseId = null;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -53,37 +63,42 @@ export function useChat() {
             const jsonData = JSON.parse(data);
 
             if (jsonData.type === "final" && jsonData.responseId) {
-              setPreviousResponseId(jsonData.responseId);
+              responseId = jsonData.responseId;
               continue;
             }
 
             if (jsonData.type === "message" && jsonData.delta) {
               fullResponse += jsonData.delta;
+              setStreamingContent(fullResponse);
 
-              setMessages((prev) => {
-                const newMessages = [...prev];
-                newMessages[newMessages.length - 1] = {
-                  content: fullResponse,
-                  role: "assistant",
-                };
-                return newMessages;
+              // Update the database with the current content
+              await db.messages.update(assistantMessageId, {
+                content: fullResponse,
               });
             }
           }
         }
       }
+
+      // Final update with responseId
+      if (responseId) {
+        await db.messages.update(assistantMessageId, {
+          responseId,
+        });
+      }
     } catch (error) {
-      setMessages((prev) => [
-        ...prev,
-        {
-          content: "Sorry, something went wrong. Please try again.",
-          role: "assistant",
-        },
-      ]);
+      console.error("Error in chat:", error);
+      // Add error message to the database
+      await db.messages.add({
+        chatId,
+        role: "assistant",
+        content: "Sorry, something went wrong. Please try again.",
+        createdAt: new Date(),
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { messages, isLoading, sendMessage };
+  return { isLoading, streamingContent, sendMessage };
 }
