@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { db } from "@/db/db";
+import axios from "axios";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
@@ -7,7 +8,7 @@ export function useChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [streamingContent, setStreamingContent] = useState<string>("");
 
-  const sendMessage = async (
+  const sendStreamedMessage = async (
     messageText: string,
     chatId: number,
     previousResponseId: string | null
@@ -32,7 +33,7 @@ export function useChat() {
         createdAt: new Date(),
       });
 
-      const response = await fetch(`${API_URL}/chat`, {
+      const response = await fetch(`${API_URL}/chat-stream`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -100,5 +101,37 @@ export function useChat() {
     }
   };
 
-  return { isLoading, streamingContent, sendMessage };
+  const sendMessage = async (
+    messageText: string,
+    chatId: number,
+    previousResponseId: string | null
+  ) => {
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post(`${API_URL}/chat`, {
+        message: messageText,
+        previousResponseId,
+      });
+      const responseText = response.data.output[0].content[0].text;
+      await db.messages.add({
+        chatId,
+        responseId: response.data.id,
+        role: "assistant",
+        content: responseText,
+        createdAt: new Date(),
+      });
+    } catch (error) {
+      await db.messages.add({
+        chatId,
+        role: "assistant",
+        content: "Sorry, something went wrong. Please try again.",
+        createdAt: new Date(),
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { isLoading, streamingContent, sendStreamedMessage, sendMessage };
 }

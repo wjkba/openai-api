@@ -73,7 +73,7 @@ function ChatSidebar({
         </button>
       </div>
 
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col-reverse flex-dire gap-2">
         {chats.map((chat) => (
           <li key={chat.id}>
             <ChatCard

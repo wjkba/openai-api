@@ -19,7 +19,7 @@ export default function Chat({
   activeChatId,
   onCreateChat,
 }: ChatProps) {
-  const { isLoading, streamingContent, sendMessage } = useChat();
+  const { isLoading, streamingContent, sendStreamedMessage } = useChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastResponseIdRef = useRef<string | null>(null);
 
@@ -64,10 +64,10 @@ export default function Chat({
       onCreateChat(newChatId);
 
       // Using the newly created chat
-      sendMessage(message, newChatId, null);
+      sendStreamedMessage(message, newChatId, null);
     } else {
       // Using existing chat
-      sendMessage(message, activeChatId, lastResponseIdRef.current);
+      sendStreamedMessage(message, activeChatId, lastResponseIdRef.current);
     }
   };
 

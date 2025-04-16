@@ -24,7 +24,7 @@ app.add_middleware(
 async def ping():
     return {"message": "pong"}
 
-@app.post("/chat")
+@app.post("/chat-stream")
 async def chat(req: Request):
     try:
         body = await req.json()
@@ -70,5 +70,29 @@ async def chat(req: Request):
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
             
+    except Exception as e:
+        return {"error": str(e)}
+
+
+
+@app.post("/chat")
+async def chat(req: Request):
+    try:
+        body = await req.json()
+        userMessage = body.get("message")
+        if not userMessage:
+            return {"error": "Message is required"}
+            
+        previousResponseId = body.get("previousResponseId")
+
+        response = client.responses.create(
+            model="gpt-4o",
+            input=userMessage,
+            instructions="Respond with robotic language. Add one robotic emoji to each response.",
+            previous_response_id=previousResponseId
+        )
+        
+        return response
+    
     except Exception as e:
         return {"error": str(e)}
